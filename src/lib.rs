@@ -1,30 +1,10 @@
 pub mod draw;
-
-pub fn hsv_to_rgb(h: f32, s: f32, v: f32) -> (f32, f32, f32) {
-    if s <= 0.0 {
-        return (v, v, v);
-    }
-    let mut i = (h * 6.0).trunc();
-    let f = (h * 6.0) - i;
-    let p = v * (1.0 - s);
-    let q = v * (1.0 - s * f);
-    let t = v * (1.0 - s * (1.0 - f));
-    i %= 6.0;
-    match i as i32 {
-        0 => return (v, t, p),
-        1 => return (q, v, p),
-        2 => return (p, v, t),
-        3 => return (p, q, v),
-        4 => return (t, p, v),
-        5 => return (v, p, q),
-        _ => return (0.0, 0.0, 0.0),
-    }
-}
+pub mod utils;
 
 #[cfg(test)]
 mod tests {
     use super::draw::*;
-    use super::hsv_to_rgb;
+    use super::utils::hsv_to_rgb;
 
     use crossterm::{
         cursor::{Hide, Show},
@@ -103,7 +83,7 @@ mod tests {
     fn maintest() {
         let mut stdout = stdout();
         let tsize = size().unwrap();
-        let mut screen = Screen::new((0.0, -1.0, -1.0));
+        let mut screen = Screen::new((-0.5, -1.0, -0.5));
         screen.camdir = (0.0, 0.0, 0.0);
         execute!(stdout, EnterAlternateScreen, Hide).unwrap();
         enable_raw_mode().unwrap();
@@ -129,22 +109,14 @@ mod tests {
             //     (255, 255, 255),
             //     false,
             // );
-            // screen.icosphere(
-            //     (tsize.0 as f32 / 2.0, tsize.1 as f32 * 1.34, 0.0),
-            //     (i, i, 0.0),
-            //     size,
-            //     3,
-            //     (255, 255, 255),
-            //     false,
-            // );
-            screen.pyramid(
+            screen.uv_sphere(
                 (tsize.0 as f32 / 2.0, tsize.1 as f32, 0.0),
                 (25.0, i, 0.0),
-                (size, size, size),
+                size,
+                50,
                 (255, 255, 255),
                 false,
             );
-
             screen.write();
             if poll(Duration::from_millis(0)).unwrap() {
                 let read = read().unwrap();

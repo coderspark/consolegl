@@ -1,36 +1,11 @@
+use super::utils::intersections;
+
 use cgmath::{InnerSpace, Matrix3, Rad, Vector3};
 use crossterm::terminal::size;
-use nalgebra::{AbstractRotation, Point3, Rotation3, Vector3 as nVector3};
+use nalgebra::{Point3, Vector3 as nVector3};
 use parry3d::transformation::convex_hull;
+use parry3d::shape::*;
 use std::io::{stdout, Write};
-
-/// The thing that makes scanline work
-fn intersections(rowy: i32, edges: &Vec<((i32, i32), (i32, i32))>) -> Vec<i32> {
-    let mut intersections = vec![];
-
-    for edge in edges {
-        // Horizontal lines == bad
-        if edge.0 .1 == edge.1 .1 {
-            continue;
-        }
-
-        // Sort the edges for consistency
-        let (p1, p2) = if edge.0 .1 <= edge.1 .1 {
-            (edge.0, edge.1)
-        } else {
-            (edge.1, edge.0)
-        };
-
-        // Check if an intersection occurs
-        if rowy >= p1.1 && rowy < p2.1 {
-            // uhhh
-            let x_intersec = p1.0 + (rowy - p1.1) * (p2.0 - p1.0) / (p2.1 - p1.1);
-            intersections.push(x_intersec);
-        }
-    }
-
-    intersections
-}
 
 /// The screen
 pub struct Screen {
@@ -41,7 +16,7 @@ pub struct Screen {
 }
 
 impl Screen {
-    /// Builder of screens
+    /// Create screen
     pub fn new(lightdir: (f32, f32, f32)) -> Self {
         let tsize = size().unwrap();
         Screen {
@@ -93,8 +68,18 @@ impl Screen {
         self.pxs = vec![vec![(0, 0, 0); tsize.0]; tsize.1];
     }
     /// Scan-line fill algorithm
+    ///
+    /// # Usage
+    /// ```rust
+    /// let mut screen = Screen::new(Vector3::new(-0.5, -1.0, -0.5));
+    /// screen.polygon(
+    ///     Vec<(30.0, 30.0), (20.0, 30.0), (10.0, 40.0)>,
+    ///     (255, 255, 255)
+    /// );
+    /// screen.write();
+    /// ```
     pub fn polygon(&mut self, points: Vec<(i32, i32)>, colour: (u8, u8, u8)) {
-        // Allocate room for the pixels/
+        // Allocate room for the pixels
         let mut pxs = vec![];
 
         // Get the boundry's of the scan-line operation (for optimisation)
@@ -333,6 +318,9 @@ impl Screen {
         vertices.extend(xrect);
         vertices.extend(yrect);
         vertices.extend(zrect);
+
+        vertices = vertices.iter().map(|v| v * 1.0/1.618).collect();
+
         for _ in 0..subsdivisions {
             let faces = convex_hull(&vertices).1;
 
@@ -362,6 +350,27 @@ impl Screen {
                 vertices.push(Point3::from(v6));
             }
         }
+
+        self.polyhedron(
+            vertices,
+            pos,
+            rotation,
+            (radius, radius, radius),
+            colour,
+            noshade,
+        );
+    }
+    pub fn uv_sphere(
+        &mut self,
+        pos: (f32, f32, f32),
+        rotation: (f32, f32, f32),
+        radius: f32,
+        subsdivisions: u32,
+        colour: (u8, u8, u8),
+        noshade: bool,
+    ) {
+        let vertices = Ball::new(1.0).to_trimesh(subsdivisions, subsdivisions).0;
+
         self.polyhedron(
             vertices,
             pos,
