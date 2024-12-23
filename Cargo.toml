@@ -1,0 +1,10 @@
+[package]
+name = "consolegl"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+cgmath = "0.18.0"
+crossterm = "0.28.1"
+nalgebra = "0.33.2"
+parry3d = "0.17.4"
